@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lab 7 Live RAG Web UI — Đặt Câu Hỏi Trực Tiếp (K4 Data Foundations)</title>
+  
+  <!-- Modern Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #0B0F19;
+      --bg-card: rgba(17, 24, 39, 0.8);
+      --bg-card-hover: rgba(30, 41, 59, 0.9);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --border-glow: rgba(99, 102, 241, 0.35);
+      
+      --accent-indigo: #6366F1;
+      --accent-cyan: #06B6D4;
+      --accent-emerald: #10B981;
+      --accent-amber: #F59E0B;
+      --accent-rose: #F43F5E;
+      
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.25);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.14) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(6, 182, 212, 0.14) 0%, transparent 40%);
+      background-attachment: fixed;
+      line-height: 1.6;
+      padding-bottom: 60px;
+    }
+    
+    /* Header */
+    header {
+      background: rgba(11, 15, 25, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 16px 32px;
+    }
+    
+    .header-container {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    
+    .brand-logo {
+      width: 46px;
+      height: 46px;
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-cyan));
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 22px;
+      color: #FFF;
+      box-shadow: var(--shadow-glow);
+    }
+    
+    .brand-title h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #FFFFFF, #CBD5E1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .brand-title p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--accent-emerald);
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--accent-emerald);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-emerald);
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+    
+    /* Container */
+    .container {
+      max-width: 1300px;
+      margin: 32px auto;
+      padding: 0 24px;
+    }
+    
+    /* Navigation Tabs */
+    .tabs-nav {
+      display: flex;
+      gap: 12px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 32px;
+      overflow-x: auto;
+    }
+    
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 12px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+    
+    .tab-btn:hover {
+      color: var(--text-primary);
+    }
+    
+    .tab-btn.active {
+      color: var(--accent-indigo);
+      border-bottom-color: var(--accent-indigo);
+    }
+    
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Cards & Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .grid-left-wide {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 24px;
+    }
+    
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow-lg);
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    /* Interactive Question Input Box */
+    .search-box-container {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    
+    .search-input-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: #090D16;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      font-size: 14.5px;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent-indigo);
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
+    }
+
+    select {
+      background: #090D16;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      font-size: 13.5px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .btn-search {
+      background: linear-gradient(135deg, var(--accent-indigo), #4F46E5);
+      color: #FFF;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 14px 24px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-search:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.45);
+    }
+
+    /* Preset Quick Questions */
+    .preset-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 6px 12px;
+      border-radius: 99px;
+      font-size: 12.5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .chip:hover {
+      border-color: var(--accent-cyan);
+      color: var(--text-primary);
+      background: rgba(6, 182, 212, 0.12);
+    }
+
+    /* Badges */
+    .tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .tag-purple { background: rgba(99, 102, 241, 0.15); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .tag-emerald { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .tag-cyan { background: rgba(6, 182, 212, 0.15); color: #22D3EE; border: 1px solid rgba(6, 182, 212, 0.3); }
+    .tag-amber { background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    
+    /* Code Box & Snippet */
+    .code-box {
+      background: #090D16;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #E2E8F0;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    
+    .result-chunk {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-top: 12px;
+      position: relative;
+    }
+
+    .result-chunk.rank-1 {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(16, 185, 129, 0.04);
+    }
+
+    .chunk-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .score-badge {
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-emerald);
+    }
+
+    .chunk-body {
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: #CBD5E1;
+    }
+
+    .score-bar-bg {
+      width: 90px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 8px;
+    }
+
+    .score-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-indigo), var(--accent-emerald));
+    }
+
+    /* Custom Tables */
+    .table-responsive {
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      text-align: left;
+    }
+    
+    th {
+      background: rgba(30, 41, 59, 0.6);
+      color: var(--text-secondary);
+      font-weight: 600;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+
+    /* Loading Spinner */
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #FFF;
+      animation: spin 0.8s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-logo">RAG</div>
+        <div class="brand-title">
+          <h1>Lab 7 RAG Search Web UI — Đặt Câu Hỏi Trực Tiếp</h1>
+          <p>Hệ thống tìm kiếm Vector & Truy xuất dữ liệu thời gian thực (K4 Data Foundations)</p>
+        </div>
+      </div>
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        Status: Live Search API Active (Local Embedder)
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('tab-ask')">
+        💬 1. Đặt Câu Hỏi Trực Tiếp (Live RAG Search)
+      </button>
+      <button class="tab-btn" onclick="switchTab('tab-inventory')">
+        📁 2. Danh Sách Tài Liệu & Metadata Schema
+      </button>
+      <button class="tab-btn" onclick="switchTab('tab-baseline')">
+        ⚙️ 3. Thống Kê Các Chiến Lược Chunking
+      </button>
+    </div>
+
+    <!-- TAB 1: LIVE ASK QUESTION (MAIN FEATURE) -->
+    <div id="tab-ask" class="tab-content active">
+      
+      <!-- Interactive Question Input Section -->
+      <div class="card" style="margin-bottom: 28px;">
+        <div class="card-header">
+          <div class="card-title">❓ Nhập Câu Hỏi Của Bạn Cho Hệ Thống RAG</div>
+          <span class="tag tag-emerald">Live Vector Search</span>
+        </div>
+
+        <form id="search-form" onsubmit="handleSearch(event)">
+          <div class="search-box-container">
+            <div class="search-input-group">
+              <input 
+                type="text" 
+                id="question-input" 
+                placeholder="Ví dụ: Thời hạn giải quyết khiếu nại của Shopee là bao nhiêu ngày?" 
+                value="Thời hạn bộ phận tiếp nhận khiếu nại của Shopee giải quyết các tranh chấp không phải là khiếu nại Trả Hàng/Hoàn Tiền là bao nhiêu ngày làm việc?"
+                required
+              />
+              <button type="submit" class="btn-search" id="btn-submit">
+                <span>🔍 Gửi Câu Hỏi</span>
+              </button>
+            </div>
+
+            <!-- Configuration Controls -->
+            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+              <div>
+                <label style="font-size: 12.5px; color: var(--text-secondary); margin-right: 6px;">Chiến lược Chunking:</label>
+                <select id="strategy-select">
+                  <option value="fixed_size">FixedSizeChunker (chunk_size=200)</option>
+                  <option value="sentence">SentenceChunker (max_sentences=3)</option>
+                  <option value="recursive">RecursiveChunker (separators priority)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size: 12.5px; color: var(--text-secondary); margin-right: 6px;">Số kết quả Top-K:</label>
+                <select id="topk-select">
+                  <option value="3">Top 3 Chunks</option>
+                  <option value="5">Top 5 Chunks</option>
+                  <option value="1">Top 1 Chunk</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size: 12.5px; color: var(--text-secondary); margin-right: 6px;">Embedding Model:</label>
+                <select id="embedder-select">
+                  <option value="true">Local (SentenceTransformers)</option>
+                  <option value="false">Mock (Deterministic Fallback)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Preset Gợi Ý Câu Hỏi Mẫu -->
+            <div style="margin-top: 6px;">
+              <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;">💡 Gợi ý câu hỏi mẫu:</div>
+              <div class="preset-chips">
+                <span class="chip" onclick="setQuestion('Thời hạn giải quyết các tranh chấp không phải là khiếu nại Trả Hàng/Hoàn Tiền là bao nhiêu ngày?')">⏱️ Số liệu: Thời hạn giải quyết khiếu nại</span>
+                <span class="chip" onclick="setQuestion('Người Bán là pháp nhân nước ngoài cần đáp ứng điều kiện giấy phép gì khi bán trên Shopee?')">📜 Điều kiện: Giấy phép người bán nước ngoài</span>
+                <span class="chip" onclick="setQuestion('Quy trình khởi tạo khiếu nại yêu cầu Trả Hàng/Hoàn Tiền ở Bước 1 như thế nào?')">🔄 Quy trình: Khởi tạo khiếu nại đơn mua</span>
+                <span class="chip" onclick="setQuestion('Những trường hợp nào Người Mua được yêu cầu trả hàng và hoàn tiền?')">📋 Liệt kê: Các lý do trả hàng hoàn tiền</span>
+                <span class="chip" onclick="setQuestion('Trường hợp ngoại lệ nào Shopee không ra quyết định xử lý tranh chấp cuối cùng?')">⚠️ Ngoại lệ: Cơ quan thẩm quyền xử lý</span>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Live Search Results View -->
+      <div class="grid-left-wide">
+        <!-- Result List -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🔍 Kết Quả Truy Xuất Vector (Top Retrieved Chunks)</div>
+            <span id="result-count-badge" class="tag tag-cyan">Top 3 Chunks</span>
+          </div>
+
+          <div id="results-container">
+            <div style="color: var(--text-muted); font-size: 14px; text-align: center; padding: 40px 0;">
+              Nhập câu hỏi và nhấn <strong>"Gửi Câu Hỏi"</strong> để thực thi tìm kiếm vector thời gian thực...
+            </div>
+          </div>
+        </div>
+
+        <!-- Generated Answer / Context View -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🤖 Câu Trả Lời RAG Agent (Generated Response)</div>
+            <span class="tag tag-emerald">Context Grounded</span>
+          </div>
+
+          <div id="answer-container">
+            <div style="color: var(--text-muted); font-size: 14px; text-align: center; padding: 40px 0;">
+              Câu trả lời sẽ được tổng hợp từ ngữ cảnh trích xuất sau khi bấm tìm kiếm.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 2: DATA INVENTORY -->
+    <div id="tab-inventory" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📚 Danh Sách Tài Liệu Corpus & Metadata Schema</div>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>`doc_id`</th>
+                <th>Tên Tài Liệu</th>
+                <th>Category</th>
+                <th>Audience Role</th>
+                <th>License</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>`shopee-returns-policy`</td>
+                <td>Chính sách Trả hàng và Hoàn tiền Shopee</td>
+                <td><span class="tag tag-emerald">returns-policy</span></td>
+                <td>`both`</td>
+                <td>`public-page`</td>
+              </tr>
+              <tr>
+                <td>`shopee-shipping-policy`</td>
+                <td>Chính sách Vận chuyển Shopee</td>
+                <td><span class="tag tag-cyan">shipping-policy</span></td>
+                <td>`both`</td>
+                <td>`public-page`</td>
+              </tr>
+              <tr>
+                <td>`shopee-payment-limits`</td>
+                <td>QUY TRÌNH GIẢI QUYẾT TRANH CHẤP / KHIẾU NẠI</td>
+                <td><span class="tag tag-amber">payment</span></td>
+                <td>`buyer`</td>
+                <td>`public-page`</td>
+              </tr>
+              <tr>
+                <td>`shopee-prohibited-items`</td>
+                <td>Quy chế hoạt động & Sản phẩm Cấm/Hạn chế</td>
+                <td><span class="tag tag-purple">regulations</span></td>
+                <td>`both`</td>
+                <td>`public-page`</td>
+              </tr>
+              <tr>
+                <td>`shopee-product-listing-rules-previous`</td>
+                <td>Quy định về đăng bán sản phẩm (phiên bản trước)</td>
+                <td><span class="tag tag-purple">seller-listing</span></td>
+                <td>`seller`</td>
+                <td>`public-page`</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: CHUNKING STRATEGY COMPARISON -->
+    <div id="tab-baseline" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">⚙️ Thống Kê So Sánh Đọ Đạc Chunking Baseline</div>
+        </div>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Tài liệu Test</th>
+                <th>FixedSizeChunker (200, 20)</th>
+                <th>SentenceChunker (max=3)</th>
+                <th>RecursiveChunker (200)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>`shopee-returns-policy.md`</td>
+                <td>521 chunks (199.9 ký tự)</td>
+                <td>195 chunks (397.1 ký tự)</td>
+                <td>609 chunks (126.6 ký tự)</td>
+              </tr>
+              <tr>
+                <td>`shopee-shipping-policy.md`</td>
+                <td>146 chunks (199.0 ký tự)</td>
+                <td>79 chunks (272.2 ký tự)</td>
+                <td>154 chunks (139.7 ký tự)</td>
+              </tr>
+              <tr>
+                <td>`shopee-prohibited-items.md`</td>
+                <td>88 chunks (198.7 ký tự)</td>
+                <td>56 chunks (231.0 ký tự)</td>
+                <td>99 chunks (130.8 ký tự)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      event.currentTarget.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    function setQuestion(text) {
+      document.getElementById('question-input').value = text;
+      document.getElementById('search-form').dispatchEvent(new Event('submit'));
+    }
+
+    async function handleSearch(event) {
+      event.preventDefault();
+
+      const question = document.getElementById('question-input').value.trim();
+      const strategy = document.getElementById('strategy-select').value;
+      const topK = document.getElementById('topk-select').value;
+      const useLocal = document.getElementById('embedder-select').value === 'true';
+
+      if (!question) return;
+
+      const submitBtn = document.getElementById('btn-submit');
+      const resultsContainer = document.getElementById('results-container');
+      const answerContainer = document.getElementById('answer-container');
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="spinner"></span> <span>Đang tìm vector...</span>`;
+
+      resultsContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: var(--text-muted);">⌛ Đang tính Cosine Similarity & tìm kiếm Chunks trong Vector Store...</div>`;
+      answerContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: var(--text-muted);">⌛ Đang tạo ngữ cảnh...</div>`;
+
+      try {
+        const response = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: question,
+            strategy: strategy,
+            top_k: parseInt(topK),
+            use_local: useLocal
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          resultsContainer.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">❌ Lỗi: ${data.error}</div>`;
+          answerContainer.innerHTML = '';
+          return;
+        }
+
+        // Render Results
+        document.getElementById('result-count-badge').innerText = `Top ${data.results.length} Chunks (Score Highest)`;
+
+        let chunksHtml = '';
+        data.results.forEach((c, idx) => {
+          const percent = (Math.max(0, c.score) * 100).toFixed(1);
+          chunksHtml += `
+            <div class="result-chunk ${idx === 0 ? 'rank-1' : ''}">
+              <div class="chunk-header">
+                <span><strong>Top ${idx + 1}</strong> — Doc: <code class="tag tag-purple">${c.doc_id}</code> (chunk ${c.chunk_index})</span>
+                <span class="score-badge">
+                  Cos Score: ${c.score.toFixed(4)}
+                  <div class="score-bar-bg"><div class="score-bar-fill" style="width: ${percent}%;"></div></div>
+                </span>
+              </div>
+              <div class="chunk-body">"${c.content}"</div>
+            </div>
+          `;
+        });
+        resultsContainer.innerHTML = chunksHtml;
+
+        // Render Generated Answer
+        answerContainer.innerHTML = `
+          <div style="margin-bottom: 12px;">
+            <div style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 6px;">TRÍCH XUẤT NGỮ CẢNH HÀNG ĐẦU (TOP 1 RETRIEVED):</div>
+            <div class="code-box" style="border-left: 3px solid var(--accent-emerald); line-height: 1.6;">${data.results.length > 0 ? data.results[0].content : 'Không có ngữ cảnh phù hợp.'}</div>
+          </div>
+          <div style="font-size: 13px; color: var(--text-secondary);">
+            <strong>Thông tin truy xuất:</strong> Nạp từ <code>${data.total_chunks}</code> chunks trong Vector Store dùng chiến lược <code>${data.strategy}</code>.
+          </div>
+        `;
+
+      } catch (err) {
+        resultsContainer.innerHTML = `<div style="color: var(--accent-rose); padding: 20px;">❌ Không thể kết nối tới Backend Server API. Vui lòng đảm bảo bạn đang chạy <code>.venv\\Scripts\\python.exe webui/app_server.py</code></div>`;
+        answerContainer.innerHTML = '';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<span>🔍 Gửi Câu Hỏi</span>`;
+      }
+    }
+
+    // Auto search on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('search-form').dispatchEvent(new Event('submit'));
+    });
+  </script>
+</body>
+</html>
